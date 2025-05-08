@@ -9,6 +9,12 @@
 </head>
 <body>
     <div class="container">
+        <div class="sidebar">
+            <button id="sidebarToggle" class="sidebar-toggle" aria-label="Toggle sidebar">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div id="miniCalendar" class="mini-calendar"></div>
+        </div>
         <div class="calendar-section">
             <div class="header">
                 <div class="navigation">
@@ -37,9 +43,14 @@
             </div>
         </div>
 
+        <button id="chatToggle" class="chat-toggle">
+            <i class="fas fa-comments"></i>
+        </button>
+
         <div class="chat-section">
             <div class="chat-header">
                 <h3>Chat</h3>
+                <button class="close-chat">&times;</button>
             </div>
             <div class="chat-messages" id="chatMessages">
                 <!-- Messages will be added here -->
@@ -65,14 +76,30 @@
                     <label for="eventDate">Date:</label>
                     <input type="date" id="eventDate" required>
                 </div>
+                <div class="form-group">
+                    <label class="all-day-label">
+                        <input type="checkbox" id="allDayEvent">
+                        All-day event
+                    </label>
+                </div>
                 <div class="form-group time-group">
-                    <label for="eventTime">Time:</label>
-                    <div class="time-inputs">
-                        <input type="text" id="eventTime" required placeholder="12:00">
-                        <select id="eventPeriod">
-                            <option value="AM">AM</option>
-                            <option value="PM">PM</option>
-                        </select>
+                    <label>Time:</label>
+                    <div class="time-range">
+                        <div class="time-field">
+                            <input type="time" id="startTime" required>
+                            <select id="startAmPm">
+                                <option value="AM">AM</option>
+                                <option value="PM">PM</option>
+                            </select>
+                        </div>
+                        <span>to</span>
+                        <div class="time-field">
+                            <input type="time" id="endTime" required>
+                            <select id="endAmPm">
+                                <option value="AM">AM</option>
+                                <option value="PM">PM</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
                 <div class="form-group">
