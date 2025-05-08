@@ -4,12 +4,14 @@
 class Calendar {
     constructor() {
         this.date = new Date();
-        this.events = JSON.parse(localStorage.getItem('events')) || [];
+        this.userEmail = localStorage.getItem('loggedInUser');
+        this.events = this.loadUserEvents();
         this.currentView = 'month';
         this.messages = JSON.parse(localStorage.getItem('chatMessages')) || [];
         
         this.initializeElements();
         this.attachEventListeners();
+        this.populateUserInfo();
         this.render();
         this.renderMessages();
     }
@@ -42,6 +44,16 @@ class Calendar {
         // Sidebar toggle
         this.sidebar = document.querySelector('.sidebar');
         this.sidebarToggle = document.getElementById('sidebarToggle');
+
+        // Logout button
+        this.logoutBtn = document.getElementById('logoutBtn');
+
+        // User menu
+        this.userMenuContainer = document.querySelector('.user-menu-container');
+        this.userAvatar = document.getElementById('userAvatar');
+        this.userDropdown = document.getElementById('userDropdown');
+        this.userName = document.getElementById('userName');
+        this.userEmailDisplay = document.getElementById('userEmail');
     }
 
     /**
@@ -94,6 +106,31 @@ class Calendar {
                 this.closeEventModal();
             }
         });
+
+        // Logout button (in dropdown)
+        if (this.logoutBtn) {
+            this.logoutBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                // Fallback: always log out and redirect
+                localStorage.removeItem('loggedInUser');
+                window.location.href = 'login.html';
+            });
+        }
+
+        // User avatar dropdown
+        if (this.userAvatar && this.userMenuContainer) {
+            this.userAvatar.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.userMenuContainer.classList.toggle('open');
+            });
+            // Hide dropdown when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!this.userMenuContainer.contains(e.target)) {
+                    this.userMenuContainer.classList.remove('open');
+                }
+            });
+        }
     }
 
     /**
@@ -553,8 +590,8 @@ class Calendar {
         // Add the event to the events array
         this.events.push(event);
         
-        // Save to localStorage
-        localStorage.setItem('events', JSON.stringify(this.events));
+        // Save to localStorage (user-specific)
+        this.saveUserEvents();
         
         // Close modal and refresh calendar
         this.closeEventModal();
@@ -581,7 +618,7 @@ class Calendar {
      */
     deleteEvent(eventId) {
         this.events = this.events.filter(e => e.id !== eventId);
-        localStorage.setItem('events', JSON.stringify(this.events));
+        this.saveUserEvents();
         this.render();
     }
 
@@ -710,7 +747,7 @@ class Calendar {
         deleteButton.addEventListener('click', () => {
             if (confirm('Are you sure you want to delete this event?')) {
                 this.events = this.events.filter(e => e.id !== event.id);
-                localStorage.setItem('events', JSON.stringify(this.events));
+                this.saveUserEvents();
                 document.body.removeChild(popup);
                 this.render();
             }
@@ -807,7 +844,7 @@ class Calendar {
             const index = this.events.findIndex(e => e.id === event.id);
             if (index !== -1) {
                 this.events[index] = updatedEvent;
-                localStorage.setItem('events', JSON.stringify(this.events));
+                this.saveUserEvents();
             }
             
             // Close modal and refresh calendar
@@ -890,6 +927,38 @@ class Calendar {
             this.date.setMonth(this.date.getMonth() + 1);
             this.render();
         });
+    }
+
+    /**
+     * Load events for the current user
+     */
+    loadUserEvents() {
+        if (!this.userEmail) return [];
+        return JSON.parse(localStorage.getItem(`events_${this.userEmail}`)) || [];
+    }
+
+    /**
+     * Save events for the current user
+     */
+    saveUserEvents() {
+        if (!this.userEmail) return;
+        localStorage.setItem(`events_${this.userEmail}` , JSON.stringify(this.events));
+    }
+
+    /**
+     * Populate user info in the dropdown
+     */
+    populateUserInfo() {
+        const email = localStorage.getItem('loggedInUser');
+        let name = email;
+        // Try to get name from users list
+        try {
+            const users = JSON.parse(localStorage.getItem('users') || '[]');
+            const user = users.find(u => u.email === email);
+            if (user && user.name) name = user.name;
+        } catch {}
+        if (this.userName) this.userName.textContent = name;
+        if (this.userEmailDisplay) this.userEmailDisplay.textContent = email;
     }
 }
 

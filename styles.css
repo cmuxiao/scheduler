@@ -1075,21 +1075,6 @@ input[type="radio"]:checked + .color-option {
     color: #1a73e8;
 }
 
-.mini-calendar {
-    background: #fff;
-    border-radius: 8px;
-    box-shadow: 0 1px 2px 0 rgba(60, 64, 67, 0.1);
-    padding: 16px 12px 12px 12px;
-    margin-bottom: 20px;
-    min-width: 220px;
-    max-width: 260px;
-    font-size: 14px;
-    user-select: none;
-    opacity: 1;
-    transform: translateX(0);
-    transition: opacity 0.3s cubic-bezier(0.4,0,0.2,1), transform 0.3s cubic-bezier(0.4,0,0.2,1);
-}
-
 .sidebar.collapsed .mini-calendar {
     opacity: 0;
     transform: translateX(-30px);
@@ -1108,4 +1093,92 @@ input[type="radio"]:checked + .color-option {
         max-width: none;
         width: 100%;
     }
+}
+
+.logout-btn {
+    background: #fff;
+    color: #ea4335;
+    border: 1px solid #ea4335;
+    border-radius: 4px;
+    padding: 8px 18px;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    margin: 10px 24px 0 24px;
+    transition: background 0.2s, color 0.2s, border 0.2s;
+    box-shadow: 0 1px 2px 0 rgba(60, 64, 67, 0.08);
+    width: calc(100% - 48px);
+    text-align: center;
+}
+.logout-btn:hover {
+    background: #ea4335;
+    color: #fff;
+    border: 1px solid #ea4335;
+}
+
+.user-menu-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    margin-left: 18px;
+}
+
+.user-avatar {
+    background: none;
+    border: none;
+    color: #5f6368;
+    font-size: 32px;
+    cursor: pointer;
+    border-radius: 50%;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+    box-shadow: none;
+    outline: none;
+}
+.user-avatar:hover, .user-avatar:focus {
+    background: #e8f0fe;
+    color: #1a73e8;
+}
+
+.user-dropdown {
+    display: none;
+    position: absolute;
+    top: 48px;
+    right: 0;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(60,64,67,0.18);
+    min-width: 220px;
+    z-index: 100;
+    padding: 18px 0 8px 0;
+    animation: fadeIn 0.2s;
+}
+.user-menu-container.open .user-dropdown {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.user-info {
+    padding: 0 24px 12px 24px;
+    border-bottom: 1px solid #eee;
+    margin-bottom: 10px;
+}
+.user-name {
+    font-weight: 600;
+    color: #222;
+    font-size: 1.08em;
+    margin-bottom: 2px;
+}
+.user-email {
+    color: #5f6368;
+    font-size: 0.97em;
+    word-break: break-all;
 } 
