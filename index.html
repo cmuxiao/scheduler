@@ -10,14 +10,37 @@
 <body>
     <div class="container">
         <div class="sidebar">
-            <button id="sidebarToggle" class="sidebar-toggle" aria-label="Toggle sidebar">
-                <i class="fas fa-bars"></i>
-            </button>
             <div id="miniCalendar" class="mini-calendar"></div>
+            <div class="calendar-list-section">
+              <div class="calendar-list-header">
+                <span>My calendars</span>
+                <button id="calendarListToggle" class="calendar-list-toggle" aria-label="Show more">
+                  <i class="fas fa-chevron-up"></i>
+                </button>
+              </div>
+              <ul id="calendarList" class="calendar-list"></ul>
+            </div>
+            <div class="other-calendars-section">
+              <div id="otherCalendarsHeader" class="other-calendars-header">
+                <span>Other calendars</span>
+                <span class="other-calendars-icons">
+                  <i class="fas fa-plus"></i>
+                  <i class="fas fa-chevron-down"></i>
+                </span>
+              </div>
+              <div id="calendarListMoreMenu" class="calendar-list-more-menu">
+                <div>Create new calendar</div>
+                <div>From URL</div>
+                <div>Import</div>
+              </div>
+            </div>
         </div>
         <div class="calendar-section">
             <div class="header">
-                <div class="navigation">
+                <div class="navigation" style="display: flex; align-items: center; gap: 12px;">
+                    <button id="sidebarToggle" class="sidebar-toggle" aria-label="Toggle sidebar">
+                        <i class="fas fa-bars"></i>
+                    </button>
                     <button id="prevBtn">&lt;</button>
                     <h2 id="currentDate">January 2024</h2>
                     <button id="nextBtn">&gt;</button>

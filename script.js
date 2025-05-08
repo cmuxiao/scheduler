@@ -965,4 +965,63 @@ class Calendar {
 // Initialize the calendar when the page loads
 document.addEventListener('DOMContentLoaded', () => {
     new Calendar();
-}); 
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Toggle calendar list
+    const calendarListToggle = document.getElementById('calendarListToggle');
+    const calendarList = document.getElementById('calendarList');
+    if (calendarListToggle && calendarList) {
+        calendarListToggle.addEventListener('click', () => {
+            calendarList.style.display = (calendarList.style.display === 'none') ? 'block' : 'none';
+            calendarListToggle.querySelector('i').classList.toggle('fa-chevron-up');
+            calendarListToggle.querySelector('i').classList.toggle('fa-chevron-down');
+        });
+    }
+
+    // Other calendars dropdown
+    const otherCalendarsHeader = document.getElementById('otherCalendarsHeader');
+    const otherCalendarsSection = document.querySelector('.other-calendars-section');
+    const moreMenu = document.getElementById('calendarListMoreMenu');
+    if (otherCalendarsHeader && otherCalendarsSection && moreMenu) {
+        otherCalendarsHeader.addEventListener('click', (e) => {
+            e.stopPropagation();
+            otherCalendarsSection.classList.toggle('open');
+        });
+        document.addEventListener('click', (e) => {
+            if (!otherCalendarsSection.contains(e.target)) {
+                otherCalendarsSection.classList.remove('open');
+            }
+        });
+    }
+});
+
+// Google Calendar Integration: Fetch and display user's calendars dynamically
+async function fetchAndDisplayGoogleCalendars() {
+    if (!window.gapi || !gapi.client || !gapi.client.calendar) return;
+    try {
+        const response = await gapi.client.calendar.calendarList.list();
+        const calendars = response.result.items;
+        const calendarList = document.getElementById('calendarList');
+        if (!calendarList) return;
+        calendarList.innerHTML = '';
+        calendars.forEach(cal => {
+            const li = document.createElement('li');
+            li.innerHTML = `
+                <input type="checkbox" class="calendar-toggle" data-id="${cal.id}" checked>
+                <span class="calendar-color" style="background:${cal.backgroundColor}"></span>
+                <span>${cal.summary}</span>
+            `;
+            calendarList.appendChild(li);
+        });
+        // Optionally: Add event listeners to checkboxes to toggle calendar visibility
+    } catch (err) {
+        console.error('Failed to fetch Google calendars:', err);
+    }
+}
+
+// Example: Call this after Google Calendar is connected
+// fetchAndDisplayGoogleCalendars();
+
+// If you have a Google Connect button, call fetchAndDisplayGoogleCalendars() after successful connection
+// For example, after fetching Google events, also call fetchAndDisplayGoogleCalendars() 
