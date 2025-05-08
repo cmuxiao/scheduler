@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendar App</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <div class="calendar-section">
+            <div class="header">
+                <div class="navigation">
+                    <button id="prevBtn">&lt;</button>
+                    <h2 id="currentDate">January 2024</h2>
+                    <button id="nextBtn">&gt;</button>
+                </div>
+                <div class="view-controls">
+                    <button id="monthView" class="active">Month</button>
+                    <button id="weekView">Week</button>
+                    <button id="todayBtn">Day</button>
+                    <button id="createEventBtn">+</button>
+                </div>
+            </div>
+            <div class="calendar-container">
+                <div class="weekdays">
+                    <div>Sun</div>
+                    <div>Mon</div>
+                    <div>Tue</div>
+                    <div>Wed</div>
+                    <div>Thu</div>
+                    <div>Fri</div>
+                    <div>Sat</div>
+                </div>
+                <div id="calendar" class="calendar"></div>
+            </div>
+        </div>
+
+        <div class="chat-section">
+            <div class="chat-header">
+                <h3>Chat</h3>
+            </div>
+            <div class="chat-messages" id="chatMessages">
+                <!-- Messages will be added here -->
+            </div>
+            <div class="chat-input">
+                <input type="text" id="messageInput" placeholder="Type a message...">
+                <button id="sendMessage">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Event Modal -->
+    <div id="eventModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Add Event</h2>
+            <form id="eventForm">
+                <div class="form-group">
+                    <label for="eventTitle">Title:</label>
+                    <input type="text" id="eventTitle" required>
+                </div>
+                <div class="form-group">
+                    <label for="eventDate">Date:</label>
+                    <input type="date" id="eventDate" required>
+                </div>
+                <div class="form-group time-group">
+                    <label for="eventTime">Time:</label>
+                    <div class="time-inputs">
+                        <input type="text" id="eventTime" required placeholder="12:00">
+                        <select id="eventPeriod">
+                            <option value="AM">AM</option>
+                            <option value="PM">PM</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Color:</label>
+                    <div class="color-options">
+                        <div class="color-group">
+                            <input type="radio" name="eventColor" id="color1" value="#4285f4" checked>
+                            <label for="color1" class="color-option" style="background-color: #4285f4" title="Blue"></label>
+                            
+                            <input type="radio" name="eventColor" id="color2" value="#ea4335">
+                            <label for="color2" class="color-option" style="background-color: #ea4335" title="Red"></label>
+                            
+                            <input type="radio" name="eventColor" id="color3" value="#34a853">
+                            <label for="color3" class="color-option" style="background-color: #34a853" title="Green"></label>
+                            
+                            <input type="radio" name="eventColor" id="color4" value="#fbbc04">
+                            <label for="color4" class="color-option" style="background-color: #fbbc04" title="Yellow"></label>
+                        </div>
+                        
+                        <div class="color-group">
+                            <input type="radio" name="eventColor" id="color5" value="#9334e6">
+                            <label for="color5" class="color-option" style="background-color: #9334e6" title="Purple"></label>
+                            
+                            <input type="radio" name="eventColor" id="color6" value="#e37400">
+                            <label for="color6" class="color-option" style="background-color: #e37400" title="Orange"></label>
+                            
+                            <input type="radio" name="eventColor" id="color7" value="#0097a7">
+                            <label for="color7" class="color-option" style="background-color: #0097a7" title="Teal"></label>
+                            
+                            <input type="radio" name="eventColor" id="color8" value="#5f6368">
+                            <label for="color8" class="color-option" style="background-color: #5f6368" title="Gray"></label>
+                        </div>
+                        
+                        <div class="color-group">
+                            <input type="radio" name="eventColor" id="color9" value="#46bdc6">
+                            <label for="color9" class="color-option" style="background-color: #46bdc6" title="Light Blue"></label>
+                            
+                            <input type="radio" name="eventColor" id="color10" value="#7ba529">
+                            <label for="color10" class="color-option" style="background-color: #7ba529" title="Light Green"></label>
+                            
+                            <input type="radio" name="eventColor" id="color11" value="#f29900">
+                            <label for="color11" class="color-option" style="background-color: #f29900" title="Light Orange"></label>
+                            
+                            <input type="radio" name="eventColor" id="color12" value="#a142f4">
+                            <label for="color12" class="color-option" style="background-color: #a142f4" title="Light Purple"></label>
+                        </div>
+                    </div>
+                </div>
+                <button type="submit">Add Event</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html> 
