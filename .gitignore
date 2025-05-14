@@ -1,0 +1,65 @@
+# Python files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+chatbot/
+ENV/
+
+# Flask things
+instance/
+.webassets-cache
+
+# Environments
+.env
+.venv
+.env.*
+
+# Database files
+*.sqlite
+*.sqlite3
+*.db
+*_calendar_events.json
+
+# Visual Studio Code
+.vscode/
+.history/
+
+# Mac OS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Node modules (if you add frontend libraries)
+node_modules/
+npm-debug.log
+yarn-error.log
+yarn-debug.log
+
+# Log files
+*.log 

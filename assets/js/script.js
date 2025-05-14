@@ -9,11 +9,23 @@ class Calendar {
         this.currentView = 'month';
         this.messages = JSON.parse(localStorage.getItem('chatMessages')) || [];
         
+        // Use a configurable API URL with fallback
+        this.chatApiUrl = localStorage.getItem('chatApiUrl') || 'http://localhost:5000/api/chat';
+        this.isChatbotReady = false;
+        this.useFallbackChat = localStorage.getItem('useFallbackChat') === 'true';
+        
+        // Track pending event suggestions
+        this.pendingEvent = null;
+        
         this.initializeElements();
         this.attachEventListeners();
         this.populateUserInfo();
         this.render();
         this.renderMessages();
+        
+        // Welcome message while checking server
+        this.addBotMessage("Welcome to your calendar assistant! I'm connecting to the AI service...");
+        this.checkChatbotServer();
     }
 
     /**
@@ -40,6 +52,9 @@ class Calendar {
         this.chatToggle = document.getElementById('chatToggle');
         this.chatSection = document.querySelector('.chat-section');
         this.closeChat = document.querySelector('.close-chat');
+        this.connectionStatus = document.getElementById('connectionStatus');
+        this.reconnectButton = document.getElementById('reconnectButton');
+        this.quickActionButtons = document.getElementById('quickActionButtons') || this.createQuickActionButtons();
 
         // Sidebar toggle
         this.sidebar = document.querySelector('.sidebar');
@@ -54,6 +69,64 @@ class Calendar {
         this.userDropdown = document.getElementById('userDropdown');
         this.userName = document.getElementById('userName');
         this.userEmailDisplay = document.getElementById('userEmail');
+    }
+
+    /**
+     * Create quick action buttons for common chat commands
+     */
+    createQuickActionButtons() {
+        // Create container if it doesn't exist
+        const container = document.createElement('div');
+        container.id = 'quickActionButtons';
+        container.className = 'quick-action-buttons';
+        
+        // Add button for creating an event today
+        const createTodayButton = document.createElement('button');
+        createTodayButton.className = 'quick-action-button';
+        createTodayButton.innerHTML = '<i class="fas fa-plus"></i> Today';
+        createTodayButton.addEventListener('click', () => {
+            this.messageInput.value = 'Add event today';
+            this.sendMessage();
+        });
+        
+        // Add button for creating an event tomorrow
+        const createTomorrowButton = document.createElement('button');
+        createTomorrowButton.className = 'quick-action-button';
+        createTomorrowButton.innerHTML = '<i class="fas fa-plus"></i> Tomorrow';
+        createTomorrowButton.addEventListener('click', () => {
+            this.messageInput.value = 'Add event tomorrow';
+            this.sendMessage();
+        });
+        
+        // Add button for creating a meeting
+        const createMeetingButton = document.createElement('button');
+        createMeetingButton.className = 'quick-action-button';
+        createMeetingButton.innerHTML = '<i class="fas fa-users"></i> Meeting';
+        createMeetingButton.addEventListener('click', () => {
+            this.messageInput.value = 'Add a meeting';
+            this.sendMessage();
+        });
+        
+        // Add button for showing events
+        const showEventsButton = document.createElement('button');
+        showEventsButton.className = 'quick-action-button';
+        showEventsButton.innerHTML = '<i class="fas fa-calendar"></i> Events';
+        showEventsButton.addEventListener('click', () => {
+            this.messageInput.value = 'Show my events';
+            this.sendMessage();
+        });
+        
+        // Add buttons to container
+        container.appendChild(createTodayButton);
+        container.appendChild(createTomorrowButton);
+        container.appendChild(createMeetingButton);
+        container.appendChild(showEventsButton);
+        
+        // Insert the container at the right location
+        const chatInput = document.querySelector('.chat-input');
+        chatInput.parentNode.insertBefore(container, chatInput);
+        
+        return container;
     }
 
     /**
@@ -129,6 +202,13 @@ class Calendar {
                 if (!this.userMenuContainer.contains(e.target)) {
                     this.userMenuContainer.classList.remove('open');
                 }
+            });
+        }
+
+        // Reconnect button
+        if (this.reconnectButton) {
+            this.reconnectButton.addEventListener('click', () => {
+                this.reconnectChatbot();
             });
         }
     }
@@ -443,10 +523,18 @@ class Calendar {
         dayEvents.forEach(event => {
             const eventElement = document.createElement('div');
             eventElement.className = 'event';
-            eventElement.style.backgroundColor = event.color;
+            
+            // Set event color (handle events from manual creation and chatbot)
+            const color = event.color || '#4285f4';
+            eventElement.style.backgroundColor = color.endsWith('fe') ? color : `${color}20`; // Add transparency for non-opacity colors
+            eventElement.style.borderLeftColor = color;
+            eventElement.style.color = color.replace(/20$/, ''); // Remove transparency if present
+            
+            // Check for all-day (handle both property names)
+            const isAllDay = event.allDay || event.is_all_day || false;
             
             if (this.currentView === 'week' || this.currentView === 'day') {
-                if (!event.allDay) {
+                if (!isAllDay) {
                     // Parse the time to get hours and minutes
                     const [startHour, startMinute] = event.startTime.split(':').map(Number);
                     const [endHour, endMinute] = event.endTime.split(':').map(Number);
@@ -462,7 +550,7 @@ class Calendar {
                 const eventContent = document.createElement('div');
                 eventContent.className = 'event-content';
                 eventContent.innerHTML = `
-                    ${!event.allDay ? `<div class="event-time">${event.startTime} - ${event.endTime}</div>` : ''}
+                    ${!isAllDay ? `<div class="event-time">${event.startTime} - ${event.endTime}</div>` : ''}
                     <div class="event-title">${event.title}</div>
                 `;
                 eventElement.appendChild(eventContent);
@@ -470,7 +558,7 @@ class Calendar {
                 // For month view, show a more compact event display
                 eventElement.innerHTML = `
                     <span class="event-title">${event.title}</span>
-                    ${!event.allDay ? `<span class="event-time">${event.startTime}</span>` : ''}
+                    ${!isAllDay ? `<span class="event-time">${event.startTime}</span>` : ''}
                 `;
             }
             
@@ -623,37 +711,349 @@ class Calendar {
     }
 
     /**
+     * Update the connection status display
+     */
+    updateConnectionStatus(status) {
+        if (!this.connectionStatus) return;
+        
+        // Remove all existing status classes
+        this.connectionStatus.classList.remove('online', 'offline', 'connecting', 'fallback');
+        
+        switch (status) {
+            case 'online':
+                this.connectionStatus.classList.add('online');
+                this.connectionStatus.textContent = 'Online';
+                break;
+            case 'offline':
+                this.connectionStatus.classList.add('offline');
+                this.connectionStatus.textContent = 'Offline';
+                break;
+            case 'connecting':
+                this.connectionStatus.classList.add('connecting');
+                this.connectionStatus.textContent = 'Connecting...';
+                break;
+            case 'fallback':
+                this.connectionStatus.classList.add('fallback');
+                this.connectionStatus.textContent = 'Local Mode';
+                break;
+            default:
+                this.connectionStatus.classList.add('offline');
+                this.connectionStatus.textContent = 'Unknown';
+        }
+    }
+
+    /**
+     * Check if the chatbot server is ready
+     */
+    checkChatbotServer() {
+        // Update status to connecting
+        this.updateConnectionStatus('connecting');
+        
+        // If fallback mode is already set, don't check the server
+        if (this.useFallbackChat) {
+            this.isChatbotReady = true;
+            this.updateConnectionStatus('fallback');
+            this.addBotMessage("I'm in local mode. Basic calendar functions only.");
+            return;
+        }
+
+        fetch(this.chatApiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                user_id: this.userEmail || 'default',
+                message: 'ping'
+            })
+        })
+        .then(response => {
+            if (response.ok) {
+                this.isChatbotReady = true;
+                console.log('Chatbot server is ready');
+                // Update status to online
+                this.updateConnectionStatus('online');
+                
+                // Replace the welcome message
+                const welcomeMsg = "Calendar assistant ready. How can I help?";
+                // Find and replace the connecting message
+                const connectingMsg = this.messages.find(m => m.text.includes("I'm connecting to the AI service"));
+                if (connectingMsg) {
+                    connectingMsg.text = welcomeMsg;
+                    localStorage.setItem('chatMessages', JSON.stringify(this.messages));
+                    this.renderMessages();
+                } else {
+                    this.addBotMessage(welcomeMsg);
+                }
+            } else {
+                console.warn('Chatbot server returned an error:', response.statusText);
+                this.updateConnectionStatus('offline');
+                this.enableFallbackMode("Connection failed. Using simple mode.");
+            }
+        })
+        .catch(error => {
+            console.error('Error connecting to chatbot server:', error);
+            this.updateConnectionStatus('offline');
+            this.enableFallbackMode("Server connection failed. Using simple mode. Run 'python chat_server.py' for full features.");
+        });
+    }
+
+    /**
+     * Enable fallback chat mode when server is unavailable
+     */
+    enableFallbackMode(message) {
+        this.useFallbackChat = true;
+        this.isChatbotReady = true;
+        localStorage.setItem('useFallbackChat', 'true');
+        this.updateConnectionStatus('fallback');
+        
+        // Replace the connecting message with fallback notification
+        const connectingMsg = this.messages.find(m => m.text.includes("I'm connecting to the AI service"));
+        if (connectingMsg) {
+            connectingMsg.text = message;
+            localStorage.setItem('chatMessages', JSON.stringify(this.messages));
+            this.renderMessages();
+        } else {
+            this.addBotMessage(message);
+        }
+    }
+
+    /**
+     * Add a bot message to the chat
+     */
+    addBotMessage(text, options = {}) {
+        const message = {
+            id: Date.now(),
+            text: text,
+            timestamp: new Date().toISOString(),
+            sent: false, // false for received messages
+            ...options
+        };
+        
+        this.messages.push(message);
+        localStorage.setItem('chatMessages', JSON.stringify(this.messages));
+        this.renderMessages();
+    }
+
+    /**
+     * Add a user message to the chat
+     */
+    addUserMessage(text) {
+        const message = {
+            id: Date.now(),
+            text: text,
+            timestamp: new Date().toISOString(),
+            sent: true // true for sent messages
+        };
+        
+        this.messages.push(message);
+        localStorage.setItem('chatMessages', JSON.stringify(this.messages));
+        this.renderMessages();
+    }
+
+    /**
      * Send a chat message
      */
     sendMessage() {
         const messageText = this.messageInput.value.trim();
         if (!messageText) return;
 
-        const message = {
-            id: Date.now(),
-            text: messageText,
-            timestamp: new Date().toISOString(),
-            sent: true // true for sent messages, false for received
-        };
-
-        this.messages.push(message);
-        localStorage.setItem('chatMessages', JSON.stringify(this.messages));
-        
+        // Add user message to chat
+        this.addUserMessage(messageText);
         this.messageInput.value = '';
+
+        // Add a "thinking" indicator
+        const thinkingId = Date.now();
+        const thinkingMessage = {
+            id: thinkingId,
+            text: "Thinking...",
+            timestamp: new Date().toISOString(),
+            sent: false,
+            isThinking: true
+        };
+        this.messages.push(thinkingMessage);
         this.renderMessages();
 
-        // Simulate a response after 1 second
-        setTimeout(() => {
-            const response = {
-                id: Date.now(),
-                text: "This is an automated response. I'm a demo chat!",
-                timestamp: new Date().toISOString(),
-                sent: false
-            };
-            this.messages.push(response);
-            localStorage.setItem('chatMessages', JSON.stringify(this.messages));
-            this.renderMessages();
-        }, 1000);
+        // Check if the chatbot server is ready
+        if (!this.isChatbotReady) {
+            // Remove thinking indicator after a short delay
+            this.messages = this.messages.filter(m => m.id !== thinkingId);
+            this.addBotMessage("I'm not connected to the AI assistant server. Please make sure it's running.");
+            return;
+        }
+
+        // If using fallback chat mode
+        if (this.useFallbackChat) {
+            // Remove thinking indicator after a short delay
+            setTimeout(() => {
+                this.messages = this.messages.filter(m => m.id !== thinkingId);
+                
+                // Process simple commands with fallback responses
+                const response = this.getFallbackResponse(messageText);
+                this.addBotMessage(response);
+            }, 500);
+            return;
+        }
+
+        // Send message to API
+        fetch(this.chatApiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                user_id: this.userEmail || 'default',
+                message: messageText,
+                pending_event: this.pendingEvent // Include any pending event for confirmation
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Remove thinking indicator
+            this.messages = this.messages.filter(m => m.id !== thinkingId);
+            
+            // Handle event suggestion
+            if (data.event_suggested && data.event_data) {
+                // Store the pending event
+                this.pendingEvent = data.event_data;
+                
+                // Add the response with confirmation buttons
+                this.addBotMessage(data.response, { 
+                    eventSuggestion: true,
+                    eventData: data.event_data 
+                });
+            } else {
+                // Regular response
+                this.addBotMessage(data.response);
+                
+                // If an event was added, refresh the calendar
+                if (data.event_added && data.add_result) {
+                    console.log('Event added by chatbot:', data.add_result);
+                    // Fetch latest events instead of using the old loadUserEvents method
+                    this.fetchAndUpdateEvents();
+                    
+                    // Clear pending event since it was added
+                    this.pendingEvent = null;
+                } else if (!data.event_suggested) {
+                    // Clear pending event if no new event was suggested
+                    this.pendingEvent = null;
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error sending message to chatbot:', error);
+            // Remove thinking indicator
+            this.messages = this.messages.filter(m => m.id !== thinkingId);
+            this.addBotMessage("I'm sorry, I encountered an error processing your request. Please try again or switch to simplified mode.");
+            
+            // Suggest switching to fallback mode
+            if (!this.useFallbackChat) {
+                setTimeout(() => {
+                    this.addBotMessage("Would you like to switch to simplified assistant mode? Type 'switch to simple mode' to enable it.");
+                }, 1000);
+            }
+        });
+    }
+
+    /**
+     * Get a simple fallback response for basic calendar questions
+     */
+    getFallbackResponse(message) {
+        message = message.toLowerCase();
+        
+        // Check for mode switching command
+        if (message.includes('switch to online mode') || message.includes('disable fallback') || message.includes('use server')) {
+            this.useFallbackChat = false;
+            localStorage.setItem('useFallbackChat', 'false');
+            this.isChatbotReady = false;
+            this.updateConnectionStatus('connecting');
+            setTimeout(() => this.checkChatbotServer(), 500);
+            return "Connecting to server...";
+        }
+        
+        // Check for API URL change
+        if (message.includes('set api url') || message.includes('change api url') || message.includes('update api url')) {
+            const urlMatch = message.match(/https?:\/\/[^\s]+/);
+            if (urlMatch) {
+                const newUrl = urlMatch[0];
+                this.chatApiUrl = newUrl;
+                localStorage.setItem('chatApiUrl', newUrl);
+                this.useFallbackChat = false;
+                this.isChatbotReady = false;
+                this.updateConnectionStatus('connecting');
+                setTimeout(() => this.checkChatbotServer(), 500);
+                return `API URL updated to ${newUrl}. Connecting...`;
+            } else {
+                return "Include full URL like 'set api url to http://localhost:5000/api/chat'";
+            }
+        }
+        
+        // Show the current API URL
+        if (message.includes('show api url') || message.includes('what is the api url') || message.includes('api url')) {
+            return `API URL: ${this.chatApiUrl}`;
+        }
+        
+        // Reset API URL to default
+        if (message.includes('reset api url') || message.includes('default api url')) {
+            const defaultUrl = 'http://localhost:5000/api/chat';
+            this.chatApiUrl = defaultUrl;
+            localStorage.setItem('chatApiUrl', defaultUrl);
+            return `API URL reset to default: ${defaultUrl}`;
+        }
+        
+        // Check for help request
+        if (message.includes('help') || message === '?') {
+            return "Commands:\n• Show events\n• Create new event\n• Show API URL\n• Set API URL\n• Switch to online mode";
+        }
+        
+        // Handle event creation in fallback mode
+        if (message.includes('create event') || message.includes('add event') || message.includes('new event') || message.includes('schedule')) {
+            // Extract potential event details
+            let dateMatch = message.match(/\b(today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i);
+            let dateText = dateMatch ? dateMatch[0] : "today";
+            
+            // Display a simple event creation form
+            setTimeout(() => {
+                const today = new Date();
+                const eventDate = dateText.toLowerCase() === "tomorrow" ? 
+                    new Date(today.setDate(today.getDate() + 1)) : today;
+                
+                // Create a simplified event
+                const simpleEvent = {
+                    title: "New Event",
+                    date: eventDate.toISOString().split('T')[0],
+                    is_all_day: true
+                };
+                
+                // Suggest to use the calendar button
+                this.addBotMessage("Use '+' button or connect to server for events.", {
+                    eventSuggestion: true,
+                    eventData: simpleEvent,
+                    fallbackMode: true
+                });
+            }, 500);
+            
+            return "Creating event...";
+        }
+        
+        if (message.includes('show events') || message.includes('my events') || message.includes('my calendar')) {
+            const eventCount = this.events.length;
+            if (eventCount === 0) {
+                return "No events scheduled.";
+            } else {
+                return `${eventCount} event${eventCount === 1 ? '' : 's'} in calendar.`;
+            }
+        }
+        
+        // Default responses
+        const defaultResponses = [
+            "Simple mode active. Start server for full features.",
+            "Limited mode. Run 'python chat_server.py' for AI assistant.",
+            "Basic calendar only. Connect to server for more.",
+            "Simple mode. Type 'help' for commands."
+        ];
+        
+        return defaultResponses[Math.floor(Math.random() * defaultResponses.length)];
     }
 
     /**
@@ -665,7 +1065,96 @@ class Calendar {
         this.messages.forEach(message => {
             const messageElement = document.createElement('div');
             messageElement.className = `message ${message.sent ? 'sent' : 'received'}`;
-            messageElement.textContent = message.text;
+            
+            // Add pulsing animation for thinking messages
+            if (message.isThinking) {
+                messageElement.classList.add('thinking');
+            }
+            
+            // Regular message text
+            const textElement = document.createElement('div');
+            textElement.className = 'message-text';
+            textElement.textContent = message.text;
+            messageElement.appendChild(textElement);
+            
+            // Add confirmation buttons for event suggestions
+            if (!message.sent && message.eventSuggestion && message.eventData) {
+                const eventData = message.eventData;
+                
+                // Create event summary
+                const eventSummary = document.createElement('div');
+                eventSummary.className = 'event-suggestion';
+                
+                // Format date
+                const eventDate = new Date(eventData.date);
+                const formattedDate = eventDate.toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    month: 'long',
+                    day: 'numeric',
+                    year: 'numeric'
+                });
+                
+                // Check for all-day event (handle both property names)
+                const isAllDay = eventData.is_all_day || eventData.allDay || false;
+                
+                // Time information
+                let timeInfo = 'All day';
+                if (!isAllDay && eventData.startTime) {
+                    timeInfo = eventData.startTime;
+                    if (eventData.endTime) {
+                        timeInfo += ` - ${eventData.endTime}`;
+                    }
+                }
+                
+                // Build summary
+                eventSummary.innerHTML = `
+                    <div class="event-suggestion-title">${eventData.title}</div>
+                    <div class="event-suggestion-details">
+                        <div class="event-date">${formattedDate}</div>
+                        <div class="event-time">${timeInfo}</div>
+                        ${eventData.notes ? `<div class="event-notes">${eventData.notes}</div>` : ''}
+                    </div>
+                `;
+                messageElement.appendChild(eventSummary);
+                
+                // Create confirmation buttons
+                const confirmationButtons = document.createElement('div');
+                confirmationButtons.className = 'event-confirmation-buttons';
+                
+                if (message.fallbackMode) {
+                    // In fallback mode, add a button to open the event modal
+                    const createButton = document.createElement('button');
+                    createButton.className = 'open-event-modal';
+                    createButton.textContent = 'Create event manually';
+                    createButton.addEventListener('click', () => {
+                        this.openEventModal(new Date(eventData.date));
+                    });
+                    confirmationButtons.appendChild(createButton);
+                } else {
+                    // In online mode, add confirm/decline buttons
+                    const confirmButton = document.createElement('button');
+                    confirmButton.className = 'confirm-event';
+                    confirmButton.textContent = 'Yes, add this event';
+                    confirmButton.addEventListener('click', () => {
+                        this.messageInput.value = 'Yes';
+                        this.sendMessage();
+                    });
+                    
+                    const declineButton = document.createElement('button');
+                    declineButton.className = 'decline-event';
+                    declineButton.textContent = 'No, cancel';
+                    declineButton.addEventListener('click', () => {
+                        this.messageInput.value = 'No';
+                        this.sendMessage();
+                    });
+                    
+                    confirmationButtons.appendChild(confirmButton);
+                    confirmationButtons.appendChild(declineButton);
+                }
+                
+                messageElement.appendChild(confirmationButtons);
+            }
+            
             this.chatMessages.appendChild(messageElement);
         });
 
@@ -930,11 +1419,70 @@ class Calendar {
     }
 
     /**
+     * Fetch the latest events from the server and update the calendar
+     */
+    fetchAndUpdateEvents() {
+        const url = new URL(this.chatApiUrl.replace('/chat', '/events'));
+        const params = { user_id: this.userEmail || 'default' };
+        url.search = new URLSearchParams(params).toString();
+        
+        fetch(url)
+            .then(response => response.json())
+            .then(events => {
+                if (Array.isArray(events)) {
+                    // Normalize event properties from server format to client format
+                    this.events = events.map(event => {
+                        // Create a normalized event object
+                        const normalizedEvent = {
+                            ...event,
+                            // Handle property name discrepancies
+                            allDay: event.allDay || event.is_all_day || false,
+                            // Make sure id is always numeric 
+                            id: typeof event.id === 'number' ? event.id : parseInt(event.id) || Date.now(),
+                            // Ensure date is properly formatted
+                            date: event.date
+                        };
+                        
+                        // If no color is specified, add a default color
+                        if (!normalizedEvent.color) {
+                            normalizedEvent.color = '#4285f4';
+                        }
+                        
+                        return normalizedEvent;
+                    });
+                    
+                    // Save to localStorage
+                    this.saveUserEvents();
+                    
+                    // Refresh calendar view
+                    this.render();
+                    console.log('Calendar updated with events from server:', this.events);
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching events from server:', error);
+            });
+    }
+
+    /**
      * Load events for the current user
      */
     loadUserEvents() {
         if (!this.userEmail) return [];
-        return JSON.parse(localStorage.getItem(`events_${this.userEmail}`)) || [];
+        
+        const events = JSON.parse(localStorage.getItem(`events_${this.userEmail}`)) || [];
+        
+        // Normalize event properties to ensure consistency
+        return events.map(event => {
+            // Create a normalized event object
+            const normalizedEvent = {
+                ...event,
+                // Handle property name discrepancies
+                allDay: event.allDay || event.is_all_day || false
+            };
+            
+            return normalizedEvent;
+        });
     }
 
     /**
@@ -960,13 +1508,45 @@ class Calendar {
         if (this.userName) this.userName.textContent = name;
         if (this.userEmailDisplay) this.userEmailDisplay.textContent = email;
     }
+
+    /**
+     * Try to reconnect to the chatbot server
+     */
+    reconnectChatbot() {
+        // Add spinning animation
+        if (this.reconnectButton) {
+            this.reconnectButton.classList.add('spinning');
+        }
+        
+        // Reset status
+        this.useFallbackChat = false;
+        localStorage.setItem('useFallbackChat', 'false');
+        this.isChatbotReady = false;
+        
+        // Inform user
+        this.addBotMessage("Attempting to connect to the AI assistant server...");
+        
+        // Try to connect
+        this.updateConnectionStatus('connecting');
+        setTimeout(() => {
+            this.checkChatbotServer();
+            
+            // Remove spinning animation after 2 seconds
+            setTimeout(() => {
+                if (this.reconnectButton) {
+                    this.reconnectButton.classList.remove('spinning');
+                }
+            }, 2000);
+        }, 500);
+    }
 }
 
 // Initialize the calendar when the page loads
 document.addEventListener('DOMContentLoaded', () => {
-    new Calendar();
+    window.calendarApp = new Calendar();
 });
 
+// Google Calendar Integration
 document.addEventListener('DOMContentLoaded', function() {
     // Toggle calendar list
     const calendarListToggle = document.getElementById('calendarListToggle');
@@ -1014,14 +1594,7 @@ async function fetchAndDisplayGoogleCalendars() {
             `;
             calendarList.appendChild(li);
         });
-        // Optionally: Add event listeners to checkboxes to toggle calendar visibility
     } catch (err) {
         console.error('Failed to fetch Google calendars:', err);
     }
-}
-
-// Example: Call this after Google Calendar is connected
-// fetchAndDisplayGoogleCalendars();
-
-// If you have a Google Connect button, call fetchAndDisplayGoogleCalendars() after successful connection
-// For example, after fetching Google events, also call fetchAndDisplayGoogleCalendars() 
+} 
