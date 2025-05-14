@@ -8,7 +8,7 @@ A modern, responsive calendar application with AI-powered scheduling assistance.
 - **Event Management**: Create, edit, and delete events
 - **AI Assistant**: Natural language interface for scheduling and event management
 - **User Authentication**: Secure account creation and login
-- **Responsive Design**: Works on desktop and mobile devices
+- **Responsive Design**: Works on desktop and mobile devices (soon)
 
 ## Technology Stack
 
@@ -29,7 +29,7 @@ A modern, responsive calendar application with AI-powered scheduling assistance.
 1. Clone the repository:
    ```
    git clone https://github.com/cmuxiao/sheduler.git
-   cd smart-calendar
+   cd sheduler
    ```
 
 2. Install Python dependencies:
